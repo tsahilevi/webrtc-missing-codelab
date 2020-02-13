@@ -1,0 +1,212 @@
+<html>
+<head>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <style>
+video {
+    width: 320px;
+    margin: 0 20px 20px 0;
+}
+
+button {
+    background-color: rgb(58, 200, 143);
+    border: none;
+    border-radius: 2px;
+	box-shadow: none;
+	padding: 13px 40px !important;
+    color: white;
+}
+
+body {
+    background-image: url("https://bloggeek.me/wp-content/uploads/2020/02/bloggeekme.png");
+    background-position: right bottom;
+    background-repeat: no-repeat;
+}
+  </style>
+</head>
+<body>
+    <p>Client ID: <span id="clientId"></span></p>
+    <video id="localVideo" autoplay muted playsinline></video>
+    <div id="remoteVideos"></div>
+    <div>
+        <label for="peer">Peer:</label>
+        <input id="peer" placeholder="peer id">
+        <button id="callButton">call</button>
+        <button id="hangupButton" disabled>hangup</button>
+    </div>
+    <script>
+const peers = new Map();
+const protocol = window.location.protocol === 'https' ? 'wss' : 'ws';
+const callBtn = document.getElementById('callButton');
+callBtn.addEventListener('click', () => {
+    callBtn.disabled = true;
+    hangupBtn.disabled = false;
+    document.getElementById('peer').disabled = true;
+    const peer = document.getElementById('peer').value;
+    call(peer);
+});
+const hangupBtn = document.getElementById('hangupButton');
+hangupBtn.addEventListener('click', () => {
+    callBtn.disabled = false;
+    hangupBtn.disabled = true;
+    document.getElementById('peer').disabled = false;
+    const peer = document.getElementById('peer').value;
+    hangup(peer);
+});
+
+let clientId; // our client id
+let ws; // our websocket
+let localStream;
+
+async function getUserMedia() {
+    const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
+    document.getElementById('localVideo').srcObject = stream;
+    return stream;
+}
+
+function connect() {
+    ws = new WebSocket(protocol + '://' + window.location.host);
+    ws.addEventListener('open', () => {
+        console.log('websocket connected');
+    });
+    ws.addEventListener('close', (e) => {
+        console.log('websocket closed', e);
+    });
+    ws.addEventListener('message', async (e) => {
+        let data;
+        try {
+            data = JSON.parse(e.data);
+        } catch(err) {
+            console.log('Received invalid JSON', err, e.data);
+            return;
+        }
+        switch(data.type) {
+        case 'hello':
+            clientId = data.id;
+            document.getElementById('clientId').innerText = clientId;
+            break;
+        case 'bye':
+            if (peers.has(data.id)) {
+                peers.get(data.id).close();
+                peers.delete(data.id);
+                // TODO: remove video
+            } else {
+                console.log('Peer not found', data.id);
+            }
+            break;
+        case 'offer':
+            if (!peers.has(data.id)) {
+                console.log('Incoming call from', data.id);
+                // create a new peer. Note: there is nothing here rejecting multiple calls
+                // or changing the UI.
+                const pc = createPeerConnection(data.id);
+                if (localStream) {
+                    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+                }
+                await pc.setRemoteDescription({
+                    type: data.type,
+                    sdp: data.sdp
+                });
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                ws.send(JSON.stringify({
+                    type: 'answer',
+                    sdp: answer.sdp,
+                    id: data.id,
+                }));
+            } else {
+                console.log('Subsequent offer not implemented');
+            }
+            break;
+        case 'answer':
+            if (peers.has(data.id)) {
+                const pc = peers.get(data.id);
+                await pc.setRemoteDescription({
+                    type: data.type,
+                    sdp: data.sdp
+                });
+            } else {
+                console.log('Peer not found', data.id);
+            }
+            break;
+        case 'candidate':
+            if (peers.has(data.id)) {
+                const pc = peers.get(data.id);
+                console.log('addIceCandidate', data);
+                await pc.addIceCandidate(data.candidate);
+            } else {
+                console.log('Peer not found', data.id);
+            }
+            break;
+        default:
+            console.log('Unhandled', data);
+            break;
+        }
+    });
+}
+
+function createPeerConnection(id) {
+    const pc = new RTCPeerConnection(); // no ice servers.
+    pc.addEventListener('icecandidate', (e) => {
+        ws.send(JSON.stringify({
+            type: 'candidate',
+            candidate: e.candidate,
+            id,
+        }));
+    });
+    pc.addEventListener('track', (e) => {
+        if (!document.getElementById('remote-' + id)) {
+            const video = document.createElement('video');
+            video.id = 'remote-' + id;
+            video.autoplay = true;
+            video.playsinline = true;
+            video.srcObject = e.streams[0];
+            document.getElementById('remoteVideos').appendChild(video);
+            // One could add a per-peer hangup button and place it over the
+            // element. Requires some absolute-relative css magic.
+        }
+    });
+    peers.set(id, pc);
+    return pc;
+}
+
+async function call(id) {
+    if (peers.has(id)) {
+        console.log('it seems you are already in a call with', id);
+        return;
+    }
+    const pc = createPeerConnection(id);
+    if (localStream) {
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    }
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    ws.send(JSON.stringify({
+        type: 'offer',
+        sdp: offer.sdp,
+        id,
+    }));
+}
+
+function hangup(id) {
+    if (!peers.has(id)) {
+        console.log('no such peer');
+        return;
+    }
+    const pc = peers.get(id);
+    pc.close();
+    peers.delete(id);
+    // Tell the other side
+    ws.send(JSON.stringify({
+        type: 'bye',
+        id,
+    }));
+}
+
+// Get the camera, then connect to signaling. Makes things simple.
+getUserMedia()
+  .then((stream) => {
+    localStream = stream;
+    connect();
+});
+    </script>
+</body>
