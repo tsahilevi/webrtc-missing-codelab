@@ -160,10 +160,23 @@ function createPeerConnection(id) {
             video.autoplay = true;
             video.playsinline = true;
             video.srcObject = e.streams[0];
+            video.addEventListener('loadedmetadata', () => {
+                // called when the first frame is rendered.
+                console.log(id, 'loaded metadata');
+            });
             document.getElementById('remoteVideos').appendChild(video);
             // One could add a per-peer hangup button and place it over the
             // element. Requires some absolute-relative css magic.
         }
+    });
+    pc.addEventListener('iceconnectionstatechange', () => {
+        console.log(id, 'iceconnectionstatechange', pc.iceConnectionState);
+    });
+    pc.addEventListener('connectionstatechange', () => {
+        console.log(id, 'connectionstatechange', pc.connectionState);
+    });
+    pc.addEventListener('signalingstatechange', () => {
+        console.log(id, 'signalingstatechange', pc.signalingStateChange);
     });
     peers.set(id, pc);
     return pc;
