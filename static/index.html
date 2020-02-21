@@ -21,6 +21,10 @@
     grid-column: 2/2;
 }
 
+.muted {
+    color: red;
+}
+
 video {
     height: 480px;
     width: 640px;
@@ -53,9 +57,9 @@ body {
         <div class="left">
             <p>Client ID: <span id="clientId"></span></p>
             <p>
-                <button>mute audio</button>
-                <button>mute video</button>
-                <button id="shareButton">share screen</button>
+                <button id="audioBtn">mute audio</button>
+                <button id="videoBtn">mute video</button>
+                <button id="shareBtn">share screen</button>
             </p>
         </div>
         <div class="right">
@@ -88,6 +92,31 @@ hangupBtn.addEventListener('click', () => {
     hangup(peer);
 });
 
+// Audio and video muting.
+const audioBtn = document.getElementById('audioBtn');
+audioBtn.addEventListener('click', () => {
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack.enabled) {
+        audioBtn.classList.add('muted');
+    } else {
+        audioBtn.classList.remove('muted');
+    }
+    audioTrack.enabled = !audioTrack.enabled;
+});
+const videoBtn = document.getElementById('videoBtn');
+videoBtn.addEventListener('click', () => {
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack.enabled) {
+        videoBtn.classList.add('muted');
+    } else {
+        videoBtn.classList.remove('muted');
+    }
+    videoTrack.enabled = !videoTrack.enabled;
+    // The advanced version of this stops the track to disable and uses
+    // replaceTrack to re-enable. Not necessary in Firefox which turns
+    // off the camera light.
+});
+
 // Relatively self-contained screensharing/replaceTrack example.
 let screenShare;
 function replaceVideoTrack(withTrack) {
@@ -98,8 +127,7 @@ function replaceVideoTrack(withTrack) {
         }
     });
 }
-const shareBtn = document.getElementById('shareButton');
-shareBtn.addEventListener('click', async () => {
+document.getElementById('shareBtn').addEventListener('click', async () => {
     if (screenShare) { // click-to-end.
         screenShare.getTracks().forEach(t => t.stop());
         screenShare = null;
