@@ -71,6 +71,7 @@ wss.on('connection', (ws) => {
         }
         if (!connections.has(data.id)) {
             console.log(id, 'peer not found', data.id);
+            return;
         }
         const peer = connections.get(data.id);
 
