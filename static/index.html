@@ -2,9 +2,28 @@
 <head>
     <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <style>
+.container {
+    margin: 0 auto 0 auto;
+    max-width: 60em;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 10px;
+}
+
+.videocontainer {
+    position: relative;
+}
+
+.left {
+    grid-column: 1/2;
+}
+.right{
+    grid-column: 2/2;
+}
+
 video {
-    width: 320px;
-    margin: 0 20px 20px 0;
+    height: 480px;
+    width: 640px;
 }
 
 button {
@@ -24,14 +43,30 @@ body {
   </style>
 </head>
 <body>
-    <p>Client ID: <span id="clientId"></span></p>
-    <video id="localVideo" autoplay muted playsinline></video>
-    <div id="remoteVideos"></div>
-    <div>
-        <label for="peer">Peer:</label>
-        <input id="peer" placeholder="peer id">
-        <button id="callButton">call</button>
-        <button id="hangupButton" disabled>hangup</button>
+    <div class="container">
+        <div class="videocontainer left">
+            <video id="localVideo" autoplay muted playsinline></video>
+        </div>
+        <div class="videocontainer right">
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <div class="left">
+            <p>Client ID: <span id="clientId"></span></p>
+            <p>
+                <button>mute audio</button>
+                <button>mute video</button>
+                <button>share screen</button>
+            </p>
+        </div>
+        <div class="right">
+            <p>
+                <button id="callButton">call</button>
+                <input id="peer" placeholder="peer id">
+            </p>
+            <p>
+                <button id="hangupButton" disabled>hangup</button>
+            </p>
+        </div>
     </div>
     <script>
 const peers = new Map();
@@ -83,12 +118,12 @@ function connect() {
         case 'hello':
             clientId = data.id;
             document.getElementById('clientId').innerText = clientId;
+            window.location.hash = clientId;
             break;
         case 'bye':
             if (peers.has(data.id)) {
                 peers.get(data.id).close();
                 peers.delete(data.id);
-                // TODO: remove video
             } else {
                 console.log('Peer not found', data.id);
             }
@@ -96,8 +131,15 @@ function connect() {
         case 'offer':
             if (!peers.has(data.id)) {
                 console.log('Incoming call from', data.id);
-                // create a new peer. Note: there is nothing here rejecting multiple calls
-                // or changing the UI.
+                if (peers.size >= 1) { // Already in a call. Reject.
+                    console.log('Already in a call, rejecting');
+                    ws.send(JSON.stringify({
+                        type: 'bye',
+                        id: data.id,
+                    }));
+                    return;
+                }
+                // Create a new peer.
                 const pc = createPeerConnection(data.id);
                 if (localStream) {
                     localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
@@ -154,20 +196,12 @@ function createPeerConnection(id) {
         }));
     });
     pc.addEventListener('track', (e) => {
-        if (!document.getElementById('remote-' + id)) {
-            const video = document.createElement('video');
-            video.id = 'remote-' + id;
-            video.autoplay = true;
-            video.playsinline = true;
-            video.srcObject = e.streams[0];
-            video.addEventListener('loadedmetadata', () => {
-                // called when the first frame is rendered.
-                console.log(id, 'loaded metadata');
-            });
-            document.getElementById('remoteVideos').appendChild(video);
-            // One could add a per-peer hangup button and place it over the
-            // element. Requires some absolute-relative css magic.
-        }
+        const remoteVideo = document.getElementById('remoteVideo');
+        remoteVideo.onloadedmetadata = () => {
+            // called when the first frame is rendered.
+            console.log(id, 'loaded metadata');
+        };
+        remoteVideo.srcObject = e.streams[0];
     });
     pc.addEventListener('iceconnectionstatechange', () => {
         console.log(id, 'iceconnectionstatechange', pc.iceConnectionState);
@@ -214,6 +248,9 @@ function hangup(id) {
         id,
     }));
 }
+
+// Autofill the peer from the given url.
+document.getElementById('peer').value = window.location.hash.substr(1);
 
 // Get the camera, then connect to signaling. Makes things simple.
 getUserMedia()
