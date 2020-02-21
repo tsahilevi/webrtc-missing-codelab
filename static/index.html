@@ -55,7 +55,7 @@ body {
             <p>
                 <button>mute audio</button>
                 <button>mute video</button>
-                <button>share screen</button>
+                <button id="shareButton">share screen</button>
             </p>
         </div>
         <div class="right">
@@ -87,6 +87,39 @@ hangupBtn.addEventListener('click', () => {
     const peer = document.getElementById('peer').value;
     hangup(peer);
 });
+
+// Relatively self-contained screensharing/replaceTrack example.
+let screenShare;
+function replaceVideoTrack(withTrack) {
+    peers.forEach(pc => {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) {
+            sender.replaceTrack(withTrack);
+        }
+    });
+}
+const shareBtn = document.getElementById('shareButton');
+shareBtn.addEventListener('click', async () => {
+    if (screenShare) { // click-to-end.
+        screenShare.getTracks().forEach(t => t.stop());
+        screenShare = null;
+        document.getElementById('localVideo').srcObject = localStream;
+        replaceVideoTrack(localStream.getVideoTracks()[0]);
+        return;
+    }
+    const stream = await navigator.mediaDevices.getDisplayMedia({video: true});
+    const track = stream.getVideoTracks()[0];
+    replaceVideoTrack(track);
+    document.getElementById('localVideo').srcObject = stream;
+    track.addEventListener('ended', () => {
+        console.log('Screensharing ended via the browser UI');
+        screenShare = null;
+        document.getElementById('localVideo').srcObject = localStream;
+        replaceVideoTrack(localStream.getVideoTracks()[0]);
+    });
+    screenShare = stream;
+});
+// End of screensharing
 
 let clientId; // our client id
 let ws; // our websocket
