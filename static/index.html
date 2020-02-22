@@ -76,6 +76,7 @@ body {
 const peers = new Map();
 const protocol = window.location.protocol === 'https' ? 'wss' : 'ws';
 const callBtn = document.getElementById('callButton');
+const hangupBtn = document.getElementById('hangupButton');
 callBtn.addEventListener('click', () => {
     callBtn.disabled = true;
     hangupBtn.disabled = false;
@@ -83,13 +84,13 @@ callBtn.addEventListener('click', () => {
     const peer = document.getElementById('peer').value;
     call(peer);
 });
-const hangupBtn = document.getElementById('hangupButton');
 hangupBtn.addEventListener('click', () => {
     callBtn.disabled = false;
     hangupBtn.disabled = true;
     document.getElementById('peer').disabled = false;
-    const peer = document.getElementById('peer').value;
-    hangup(peer);
+    peers.forEach((pc, id) => {
+        hangup(id);
+    });
 });
 
 // Audio and video muting.
@@ -222,6 +223,7 @@ function connect() {
                         sdp: answer.sdp,
                         id: data.id,
                     }));
+                    hangupBtn.disabled = false;
                 } else {
                     console.log('Subsequent offer not implemented');
                 }
@@ -273,6 +275,7 @@ function createPeerConnection(id) {
     });
     pc.addEventListener('iceconnectionstatechange', () => {
         console.log(id, 'iceconnectionstatechange', pc.iceConnectionState);
+        hangupBtn.disabled = false;
     });
     pc.addEventListener('connectionstatechange', () => {
         console.log(id, 'connectionstatechange', pc.connectionState);
@@ -300,6 +303,7 @@ async function call(id) {
         sdp: offer.sdp,
         id,
     }));
+    hangupBtn.disabled = false;
 }
 
 function hangup(id) {
