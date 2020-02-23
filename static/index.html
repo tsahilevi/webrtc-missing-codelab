@@ -78,14 +78,6 @@ body {
         </div>
     </div>
     <script>
-const hangupBtn = document.getElementById('hangupButton');
-hangupBtn.addEventListener('click', () => {
-    hangupBtn.disabled = true;
-    peers.forEach((pc, id) => {
-        hangup(id);
-    });
-});
-
 // Audio and video muting.
 const audioBtn = document.getElementById('audioBtn');
 audioBtn.addEventListener('click', () => {
@@ -145,13 +137,23 @@ shareBtn.addEventListener('click', async () => {
     screenShare = stream;
     shareBtn.classList.add('sharing');
 });
-// End of screensharing
 
+// When clicking the hangup button, any connections will be closed.
+const hangupBtn = document.getElementById('hangupButton');
+hangupBtn.addEventListener('click', () => {
+    hangupBtn.disabled = true;
+    peers.forEach((pc, id) => {
+        hangup(id);
+    });
+});
+
+// We connect to the same server and same protocol. Note that in production
+// you will end up connecting to wss (secure websockets) all the time.
 const protocol = window.location.protocol === 'https' ? 'wss' : 'ws';
 const peers = new Map(); // A map of all peer ids to their peerconnections.
-let clientId; // our client id
-let ws; // our websocket
-let localStream;
+let clientId; // our client id.
+let ws; // our websocket.
+let localStream; // local stream to be acquired from getUserMedia.
 
 async function getUserMedia() {
     const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
@@ -159,6 +161,7 @@ async function getUserMedia() {
     return stream;
 }
 
+// Connect the websocket and listen for messages.
 function connect() {
     return new Promise((resolve, reject) => {
         ws = new WebSocket(protocol + '://' + window.location.host);
@@ -185,6 +188,8 @@ function connect() {
             case 'hello':
                 clientId = data.id;
                 document.getElementById('clientId').innerText = clientId;
+                // Set the url hash (#) to the client id. This allows simple copy-paste
+                // of the url to another tab.
                 window.location.hash = clientId;
                 break;
             case 'bye':
@@ -256,6 +261,8 @@ function connect() {
     });
 }
 
+// Helper function to create a peerconnection and set up a couple of useful
+// event listeners.
 function createPeerConnection(id) {
     const pc = new RTCPeerConnection(); // no ice servers.
     pc.addEventListener('icecandidate', (e) => {
@@ -275,10 +282,12 @@ function createPeerConnection(id) {
     });
     pc.addEventListener('iceconnectionstatechange', () => {
         console.log(id, 'iceconnectionstatechange', pc.iceConnectionState);
-        hangupBtn.disabled = false;
     });
     pc.addEventListener('connectionstatechange', () => {
         console.log(id, 'connectionstatechange', pc.connectionState);
+        if (pc.connectionState === 'connected') {
+            hangupBtn.disabled = false;
+        }
     });
     pc.addEventListener('signalingstatechange', () => {
         console.log(id, 'signalingstatechange', pc.signalingStateChange);
@@ -287,6 +296,7 @@ function createPeerConnection(id) {
     return pc;
 }
 
+// Call a peer based on its id. Adds any tracks from the local stream.
 async function call(id) {
     if (peers.has(id)) {
         console.log('it seems you are already in a call with', id);
@@ -307,6 +317,7 @@ async function call(id) {
     document.getElementById('peerId').innerText = id;
 }
 
+// Send a signal to the peer that the call has ended and close the connection.
 function hangup(id) {
     if (!peers.has(id)) {
         console.log('no such peer');
@@ -322,7 +333,7 @@ function hangup(id) {
     }));
 }
 
-// Autoconnect when given a peer id.
+// Autoconnect when given a peer id, i.e. #someid
 const initialHash = window.location.hash.substr(1);
 
 // Get the camera, then connect to signaling. Makes things simple.
