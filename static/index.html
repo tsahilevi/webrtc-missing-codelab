@@ -25,6 +25,10 @@
     color: red;
 }
 
+.sharing {
+    color: red;
+}
+
 video {
     height: 480px;
     width: 640px;
@@ -128,12 +132,14 @@ function replaceVideoTrack(withTrack) {
         }
     });
 }
-document.getElementById('shareBtn').addEventListener('click', async () => {
+const shareBtn = document.getElementById('shareBtn');
+shareBtn.addEventListener('click', async () => {
     if (screenShare) { // click-to-end.
         screenShare.getTracks().forEach(t => t.stop());
         screenShare = null;
         document.getElementById('localVideo').srcObject = localStream;
         replaceVideoTrack(localStream.getVideoTracks()[0]);
+        shareBtn.classList.remove('sharing');
         return;
     }
     const stream = await navigator.mediaDevices.getDisplayMedia({video: true});
@@ -145,8 +151,10 @@ document.getElementById('shareBtn').addEventListener('click', async () => {
         screenShare = null;
         document.getElementById('localVideo').srcObject = localStream;
         replaceVideoTrack(localStream.getVideoTracks()[0]);
+        shareBtn.classList.remove('sharing');
     });
     screenShare = stream;
+    shareBtn.classList.add('sharing');
 });
 // End of screensharing
 
