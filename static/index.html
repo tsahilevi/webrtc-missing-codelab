@@ -67,31 +67,16 @@ body {
             </p>
         </div>
         <div class="right">
-            <p>
-                <button id="callButton">call</button>
-                <input id="peer" placeholder="peer id">
-            </p>
+            <p>Peer ID: <span id="peerId"></span></p>
             <p>
                 <button id="hangupButton" disabled>hangup</button>
             </p>
         </div>
     </div>
     <script>
-const peers = new Map();
-const protocol = window.location.protocol === 'https' ? 'wss' : 'ws';
-const callBtn = document.getElementById('callButton');
 const hangupBtn = document.getElementById('hangupButton');
-callBtn.addEventListener('click', () => {
-    callBtn.disabled = true;
-    hangupBtn.disabled = false;
-    document.getElementById('peer').disabled = true;
-    const peer = document.getElementById('peer').value;
-    call(peer);
-});
 hangupBtn.addEventListener('click', () => {
-    callBtn.disabled = false;
     hangupBtn.disabled = true;
-    document.getElementById('peer').disabled = false;
     peers.forEach((pc, id) => {
         hangup(id);
     });
@@ -158,6 +143,8 @@ shareBtn.addEventListener('click', async () => {
 });
 // End of screensharing
 
+const protocol = window.location.protocol === 'https' ? 'wss' : 'ws';
+const peers = new Map(); // A map of all peer ids to their peerconnections.
 let clientId; // our client id
 let ws; // our websocket
 let localStream;
@@ -207,6 +194,7 @@ function connect() {
             case 'offer':
                 if (!peers.has(data.id)) {
                     console.log('Incoming call from', data.id);
+                    document.getElementById('peerId').innerText = data.id;
                     if (peers.size >= 1) { // Already in a call. Reject.
                         console.log('Already in a call, rejecting');
                         ws.send(JSON.stringify({
@@ -312,6 +300,7 @@ async function call(id) {
         id,
     }));
     hangupBtn.disabled = false;
+    document.getElementById('peerId').innerText = id;
 }
 
 function hangup(id) {
