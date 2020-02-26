@@ -149,7 +149,7 @@ hangupBtn.addEventListener('click', () => {
 
 // We connect to the same server and same protocol. Note that in production
 // you will end up connecting to wss (secure websockets) all the time.
-const protocol = window.location.protocol === 'https' ? 'wss' : 'ws';
+const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
 const peers = new Map(); // A map of all peer ids to their peerconnections.
 let clientId; // our client id.
 let ws; // our websocket.
