@@ -290,7 +290,7 @@ function createPeerConnection(id) {
         }
     });
     pc.addEventListener('signalingstatechange', () => {
-        console.log(id, 'signalingstatechange', pc.signalingStateChange);
+        console.log(id, 'signalingstatechange', pc.signalingState);
     });
     peers.set(id, pc);
     return pc;
