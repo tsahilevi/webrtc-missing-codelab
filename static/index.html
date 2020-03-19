@@ -312,6 +312,15 @@ function createPeerConnection(id) {
     pc.addEventListener('signalingstatechange', () => {
         console.log(id, 'signalingstatechange', pc.signalingState);
     });
+
+    let lastResult = null; // the last getStats result.
+    const intervalId = setInterval(async () => {
+        if (pc.signalingState === 'closed') {
+            clearInterval(intervalId);
+            return;
+        }
+        lastResult = await queryBitrateStats(pc, lastResult);
+    }, 2000);
     peers.set(id, pc);
     return pc;
 }
@@ -344,6 +353,38 @@ function onConnectionStats(results) {
         remoteCandidate.address || remoteCandidate.ip || remoteCandidate.ipAddress,
         remoteCandidate.port || remoteCandidate.portNumber);
   }
+}
+
+async function queryBitrateStats(pc, lastResult) {
+    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+    if (!sender) {
+        return;
+    }
+    const stats = await sender.getStats();
+    stats.forEach(report => {
+      if (report.type === 'outbound-rtp') {
+        if (report.isRemote) {
+          return;
+        }
+        const now = report.timestamp;
+        const bytes = report.bytesSent;
+        const headerBytes = report.headerBytesSent;
+
+        const packets = report.packetsSent;
+        if (lastResult && lastResult.has(report.id)) {
+          // calculate bitrate
+          const bitrate = Math.floor(8 * (bytes - lastResult.get(report.id).bytesSent) /
+            (now - lastResult.get(report.id).timestamp));
+          const headerrate = Math.floor(8 * (headerBytes - lastResult.get(report.id).headerBytesSent) /
+            (now - lastResult.get(report.id).timestamp));
+
+          const packetrate = Math.floor(1000 * (packets - lastResult.get(report.id).packetsSent) /
+            (now - lastResult.get(report.id).timestamp));
+          console.log(`Bitrate ${bitrate}kbps, overhead ${headerrate}kbps, ${packetrate} packets/second`);
+        }
+      }
+    });
+    return stats;
 }
 
 // Call a peer based on its id. Adds any tracks from the local stream.
