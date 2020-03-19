@@ -306,6 +306,7 @@ function createPeerConnection(id) {
         console.log(id, 'connectionstatechange', pc.connectionState);
         if (pc.connectionState === 'connected') {
             hangupBtn.disabled = false;
+            pc.getStats().then(onConnectionStats);
         }
     });
     pc.addEventListener('signalingstatechange', () => {
@@ -313,6 +314,36 @@ function createPeerConnection(id) {
     });
     peers.set(id, pc);
     return pc;
+}
+
+function onConnectionStats(results) {
+  // figure out the peer's ip
+  let activeCandidatePair = null;
+  let remoteCandidate = null;
+
+  // Search for the candidate pair, spec-way first.
+  results.forEach(report => {
+    if (report.type === 'transport') {
+      activeCandidatePair = results.get(report.selectedCandidatePairId);
+    }
+  });
+  // Fallback for Firefox.
+  if (!activeCandidatePair) {
+    results.forEach(report => {
+      if (report.type === 'candidate-pair' && report.selected) {
+        activeCandidatePair = report;
+      }
+    });
+  }
+  if (activeCandidatePair && activeCandidatePair.remoteCandidateId) {
+    remoteCandidate = results.get(activeCandidatePair.remoteCandidateId);
+  }
+  if (remoteCandidate) {
+    // Statistics are a bit of a mess still...
+    console.log('Remote is',
+        remoteCandidate.address || remoteCandidate.ip || remoteCandidate.ipAddress,
+        remoteCandidate.port || remoteCandidate.portNumber);
+  }
 }
 
 // Call a peer based on its id. Adds any tracks from the local stream.
