@@ -347,5 +347,13 @@ getUserMedia()
         call(initialHash);
     }
 });
+
+window.addEventListener('beforeunload', () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        peers.forEach((pc, id) => {
+            hangup(id);
+        });
+    }
+});
     </script>
 </body>
