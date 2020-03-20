@@ -266,9 +266,28 @@ function connect() {
 function createPeerConnection(id) {
     const pc = new RTCPeerConnection(); // no ice servers.
     pc.addEventListener('icecandidate', (e) => {
+        const {candidate} = e;
+        /*
+         * the following code block demonstrates a failure to connect.
+         * Do not use in production.
+        if (candidate && candidate.candidate !== '') {
+            const parts = candidate.candidate.split(' ');
+            parts[5] = 10000; // replace port with 10000 to make ice fail.
+            ws.send(JSON.stringify({
+                type: 'candidate',
+                candidate: {
+                    candidate: parts.join(' '),
+                    sdpMid: candidate.sdpMid,
+                    sdpMLineIndex: candidate.sdpMLineIndex,
+                },
+                id,
+            }));
+            return;
+        }
+        */
         ws.send(JSON.stringify({
             type: 'candidate',
-            candidate: e.candidate,
+            candidate,
             id,
         }));
     });
