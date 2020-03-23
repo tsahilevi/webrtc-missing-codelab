@@ -154,6 +154,7 @@ const peers = new Map(); // A map of all peer ids to their peerconnections.
 let clientId; // our client id.
 let ws; // our websocket.
 let localStream; // local stream to be acquired from getUserMedia.
+let iceServers = null; // the latest iceServers we got from the signaling server.
 
 async function getUserMedia() {
     const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
@@ -166,8 +167,9 @@ function connect() {
     return new Promise((resolve, reject) => {
         ws = new WebSocket(protocol + '://' + window.location.host);
         ws.addEventListener('open', () => {
+            // wait until we have received the iceServers message.
+            // resolve();
             console.log('websocket opened');
-            resolve();
         });
         ws.addEventListener('error', (e) => {
             console.log('websocket error, is the server running?', e);
@@ -191,6 +193,10 @@ function connect() {
                 // Set the url hash (#) to the client id. This allows simple copy-paste
                 // of the url to another tab.
                 window.location.hash = clientId;
+                break;
+            case 'iceServers':
+                iceServers = data.iceServers;
+                resolve(); // resolve the promise only now so we always have an ice server configuration
                 break;
             case 'bye':
                 if (peers.has(data.id)) {
@@ -264,7 +270,7 @@ function connect() {
 // Helper function to create a peerconnection and set up a couple of useful
 // event listeners.
 function createPeerConnection(id) {
-    const pc = new RTCPeerConnection(); // no ice servers.
+    const pc = new RTCPeerConnection({iceServers});
     pc.addEventListener('icecandidate', (e) => {
         const {candidate} = e;
         /*

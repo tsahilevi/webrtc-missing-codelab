@@ -60,6 +60,13 @@ wss.on('connection', (ws) => {
         id,
     }));
 
+    // Send an ice server configuration to the client. For stun this is synchronous,
+    // for TURN it might require getting credentials.
+    ws.send(JSON.stringify({
+        type: 'iceServers',
+        iceServers: [{urls: 'stun:stun.l.google.com:19302'}],
+    }));
+
     // Remove the connection. Note that this does not tell anyone you are currently in a call with
     // that this happened. This would require additional statekeeping that is not done here.
     ws.on('close', () => {
