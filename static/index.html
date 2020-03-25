@@ -69,6 +69,17 @@ body {
                 <button id="videoBtn">mute video</button>
                 <button id="shareBtn">share screen</button>
             </p>
+            <p>
+                <label>Bandwidth:</label>
+                <select id="bandwidth">
+                    <option value="unlimited" selected>unlimited</option>
+                    <option value="2000">2000</option>
+                    <option value="1000">1000</option>
+                    <option value="500">500</option>
+                    <option value="250">250</option>
+                    <option value="125">125</option>
+                </select>kbps
+            </p>
         </div>
         <div class="right">
             <p>Peer ID: <span id="peerId"></span></p>
@@ -146,6 +157,37 @@ hangupBtn.addEventListener('click', () => {
         hangup(id);
     });
 });
+
+// Change the video bandwidth for all peers.
+const bandwidthSelector = document.querySelector('select#bandwidth');
+bandwidthSelector.onchange = () => {
+    bandwidthSelector.disabled = true;
+    const bandwidth = bandwidthSelector.options[bandwidthSelector.selectedIndex].value;
+    if (!('RTCRtpSender' in window && 'setParameters' in window.RTCRtpSender.prototype)) {
+        return; // Not supported.
+    }
+    peers.forEach((pc) => {
+        const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (!sender) {
+            return;
+        }
+        const parameters = sender.getParameters();
+        if (!parameters.encodings) { // Firefox workaround.
+          parameters.encodings = [{}];
+        }
+
+        if (bandwidth === 'unlimited') {
+          delete parameters.encodings[0].maxBitrate;
+        } else {
+          parameters.encodings[0].maxBitrate = bandwidth * 1000;
+        }
+        sender.setParameters(parameters)
+            .then(() => {
+              bandwidthSelector.disabled = false;
+            })
+            .catch(e => console.error(e));
+    });
+}
 
 // We connect to the same server and same protocol. Note that in production
 // you will end up connecting to wss (secure websockets) all the time.
