@@ -9,7 +9,10 @@ const uuid = require('uuid');
 // security BCP.
 const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
 const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-const twilio = require('twilio')(twilioAccountSid, twilioAuthToken);
+let twilio;
+if (twilioAccountSid && twilioAuthToken) {
+    twilio = require('twilio')(twilioAccountSid, twilioAuthToken);
+}
 
 const port = 8080;
  
@@ -69,12 +72,19 @@ wss.on('connection', (ws) => {
 
     // Send an ice server configuration to the client. For stun this is synchronous,
     // for TURN it might require getting credentials.
-    twilio.tokens.create().then(token => {
+    if (twilio) {
+        twilio.tokens.create().then(token => {
+            ws.send(JSON.stringify({
+                type: 'iceServers',
+                iceServers: token.iceServers,
+            }));
+        });
+    } else {
         ws.send(JSON.stringify({
             type: 'iceServers',
-            iceServers: token.iceServers,
+            iceServers: [{urls: 'stun:stun.l.google.com:19302'}],
         }));
-    });
+    }
 
     // Remove the connection. Note that this does not tell anyone you are currently in a call with
     // that this happened. This would require additional statekeeping that is not done here.
