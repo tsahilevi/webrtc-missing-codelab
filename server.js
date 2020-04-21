@@ -86,11 +86,22 @@ wss.on('connection', (ws) => {
         }));
     }
 
-    // Remove the connection. Note that this does not tell anyone you are currently in a call with
-    // that this happened. This would require additional statekeeping that is not done here.
+    // Remove the connection and notify anyone we are in a call with that
+    // our socket went away.
+    const notifyOnClose = []; // clients to be notified when this socket closes.
     ws.on('close', () => {
         console.log(id, 'Connection closed');
         connections.delete(id); 
+        notifyOnClose.forEach(remoteId => {
+            const peer = connections.get(remoteId);
+            if (!peer) {
+                return;
+            }
+            peer.sendMessage({
+                type: 'bye',
+                id,
+            });
+        });
     });
 
     ws.on('message', (message) => {
@@ -118,16 +129,40 @@ wss.on('connection', (ws) => {
             // simple as sending a 'bye' with an extra error element saying 'not-found'.
             return;
         }
-        const peer = connections.get(data.id);
+        const peerId = data.id;
+        const peer = connections.get(peerId);
 
         // Stamp messages with our id. In the client-to-server direction, 'id' is the
         // client that the message is sent to. In the server-to-client direction, it is
         // the client that the message originates from.
         data.id = id;
-        peer.send(JSON.stringify(data), (err) => {
+        peer.sendMessage(data);
+
+        // Keep some state about established calls.
+        ws.trackCallState(data, peerId);
+    });
+
+    // Send a message from a peer to our websocket.
+    ws.sendMessage = (data) => {
+        ws.trackCallState(data, data.id);
+
+        ws.send(JSON.stringify(data), (err) => {
             if (err) {
-                console.log(id, 'failed to send to peer', err);
+                console.log(id, 'failed to send to socket', err);
             }
         });
-    });
+    };
+    
+    ws.trackCallState = (data, peerId) => {
+        switch(data.type) {
+        case 'answer':
+            notifyOnClose.push(peerId);
+            break;
+        case 'bye':
+            if (notifyOnClose.indexOf(peerId) !== -1) {
+                notifyOnClose.splice(notifyOnClose.indexOf(peerId), 1);
+            }
+            break;
+        }
+    };
 });
