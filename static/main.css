@@ -1,0 +1,50 @@
+.container {
+    margin: 0 auto 0 auto;
+    max-width: 60em;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 10px;
+}
+
+.videocontainer {
+    position: relative;
+}
+
+.left {
+    grid-column: 1/2;
+}
+.right{
+    grid-column: 2/2;
+}
+
+.muted {
+    color: red;
+}
+
+.sharing {
+    color: red;
+}
+
+video {
+    height: 480px;
+    width: 640px;
+}
+
+#localVideo {
+    transform: scale(-1, 1);
+}
+
+button {
+    background-color: rgb(58, 200, 143);
+    border: none;
+    border-radius: 2px;
+	box-shadow: none;
+	padding: 13px 40px !important;
+    color: white;
+}
+
+body {
+    background-image: url("https://bloggeek.me/wp-content/uploads/2020/02/bloggeekme.png");
+    background-position: right bottom;
+    background-repeat: no-repeat;
+}
