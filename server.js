@@ -25,14 +25,30 @@ server.on('listening', () => {
     console.log('Server listening on http://localhost:' + port);
 });
 server.on('request', (request, response) => {
-    fs.readFile('static/index.html', (err, data) => {
+    const urlToPath = {
+        '/': 'static/index.html',
+        '/main.js': 'static/main.js',
+        '/main.css': 'static/main.css',
+    };
+    const urlToContentType = {
+        '/': 'text/html',
+        '/main.js': 'application/javascript',
+        '/main.css': 'text/css',
+    };
+    const filename = urlToPath[request.url];
+    if (!filename) {
+        response.writeHead(404);
+        response.end();
+        return;
+    }
+    fs.readFile(filename, (err, data) => {
         if (err) {
             console.log('could not read client file', err);
             response.writeHead(404);
             response.end();
             return;
         }
-        response.writeHead(200, {'Content-Type': 'text/html'});
+        response.writeHead(200, {'Content-Type': urlToContentType[request.url]});
         response.end(data);
     });
 });
