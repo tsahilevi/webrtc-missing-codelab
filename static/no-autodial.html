@@ -1,0 +1,56 @@
+<html>
+<head>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <link rel="stylesheet" href="/main.css"/>
+</head>
+<body>
+    <div class="container">
+        <div class="videocontainer left">
+            <video id="localVideo" autoplay muted playsinline></video>
+        </div>
+        <div class="videocontainer right">
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <div class="left">
+            <p>Client ID: <span id="clientId"></span></p>
+            <p>
+                <button id="audioBtn">mute audio</button>
+                <button id="videoBtn">mute video</button>
+                <button id="shareBtn">share screen</button>
+            </p>
+            <p>
+                <label>Bandwidth:</label>
+                <select id="bandwidth">
+                    <option value="unlimited" selected>unlimited</option>
+                    <option value="2000">2000</option>
+                    <option value="1000">1000</option>
+                    <option value="500">500</option>
+                    <option value="250">250</option>
+                    <option value="125">125</option>
+                </select>kbps
+            </p>
+        </div>
+        <div class="right">
+            <p>Peer ID: <input id="peerId" placeholder="whom to call"></input></p>
+            <p>
+                <button id="callButton">call</button>
+                <button id="hangupButton" disabled>hangup</button>
+            </p>
+        </div>
+    </div>
+    <script src="/main.js"></script>
+    <script>
+// Get the camera, then connect to signaling. Makes things simple.
+getUserMedia()
+  .then((stream) => {
+    localStream = stream;
+    return connect();
+});
+
+const callBtn = document.getElementById('callButton');
+callBtn.addEventListener('click', () => {
+    call(document.getElementById('peerId').value);
+    callBtn.disabled = true;
+});
+    </script>
+</body>

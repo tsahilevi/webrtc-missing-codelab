@@ -27,11 +27,13 @@ server.on('listening', () => {
 server.on('request', (request, response) => {
     const urlToPath = {
         '/': 'static/index.html',
+        '/no-autodial': 'static/no-autodial.html',
         '/main.js': 'static/main.js',
         '/main.css': 'static/main.css',
     };
     const urlToContentType = {
         '/': 'text/html',
+        '/no-autodial': 'text/html',
         '/main.js': 'application/javascript',
         '/main.css': 'text/css',
     };
