@@ -101,6 +101,8 @@ bandwidthSelector.onchange = () => {
     });
 }
 
+const connectionState = document.getElementById('connectionState');
+
 // We connect to the same server and same protocol. Note that in production
 // you will end up connecting to wss (secure websockets) all the time.
 const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -266,6 +268,7 @@ function createPeerConnection(id) {
             console.log(id, 'loaded metadata');
         };
         remoteVideo.srcObject = e.streams[0];
+        connectionState.style.display = 'block';
     });
     pc.addEventListener('iceconnectionstatechange', () => {
         console.log(id, 'iceconnectionstatechange', pc.iceConnectionState);
@@ -349,6 +352,9 @@ async function queryBitrateStats(pc, lastResult) {
           const packetrate = Math.floor(1000 * (packets - lastResult.get(report.id).packetsSent) /
             (now - lastResult.get(report.id).timestamp));
           console.log(`Bitrate ${bitrate}kbps, overhead ${headerrate}kbps, ${packetrate} packets/second`);
+
+          // We use the title attribute as a built-in tooltip.
+          connectionState.title = `Bitrate ${bitrate}kbps, overhead ${headerrate}kbps, ${packetrate} packets/second`;
         }
       }
     });
