@@ -1,6 +1,13 @@
 // When offerCallback is set, don't auto-answer incoming calls.
 let offerCallback = null;
 
+// Mapping of remote metadata such as stream ids to content type.
+const remoteMetadata = new Map();
+
+// Mapping of local stream ids to content type. Javascript object for easy
+// serialization.
+const localMetadata = {};
+
 // Audio and video muting.
 const audioBtn = document.getElementById('audioBtn');
 audioBtn.addEventListener('click', () => {
@@ -59,6 +66,8 @@ shareBtn.addEventListener('click', async () => {
     });
     screenShare = stream;
     shareBtn.classList.add('sharing');
+    // Here we might want to do a new signalling message that tells the other end we
+    // changed our video source.
 });
 
 // When clicking the hangup button, any connections will be closed.
@@ -134,6 +143,8 @@ async function getUserMedia() {
     const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
     document.getElementById('localVideo').srcObject = stream;
     localStream = stream;
+    // Associate metadata with the stream id.
+    localMetadata[stream.id] = 'webcam';
     return stream;
 }
 
@@ -177,6 +188,7 @@ function connect() {
                 if (peers.has(data.id)) {
                     peers.get(data.id).close();
                     peers.delete(data.id);
+                    remoteMetadata.delete(data.id);
                 } else {
                     console.log('Peer not found', data.id);
                 }
@@ -193,6 +205,8 @@ function connect() {
                         }));
                         return;
                     }
+                    console.log('offer metadata', data.metadata);
+                    remoteMetadata.set(data.id, data.metadata); // overwrite metadata.
                     // Create a new peer.
                     const pc = createPeerConnection(data.id);
                     if (localStream) {
@@ -212,6 +226,7 @@ function connect() {
                             type: 'answer',
                             sdp: answer.sdp,
                             id: data.id,
+                            metadata: localMetadata, // metadata, full and not incremental.
                         }));
                     } else {
                         offerCallback(data.id);
@@ -223,6 +238,8 @@ function connect() {
                 break;
             case 'answer':
                 if (peers.has(data.id)) {
+                    console.log('answer metadata', data.metadata, data);
+                    remoteMetadata.set(data.id, data.metadata); // overwrite metadata.
                     const pc = peers.get(data.id);
                     await pc.setRemoteDescription({
                         type: data.type,
@@ -287,6 +304,10 @@ function createPeerConnection(id) {
         };
         remoteVideo.srcObject = e.streams[0];
         connectionState.style.display = 'block';
+        // Log remote metadata. Currently assumed to be a {streamid => metadata} object.
+        if (remoteMetadata.has(id)) {
+            console.log('metadata', e.streams[0].id, remoteMetadata.get(id)[e.streams[0].id]);
+        }
     });
     pc.addEventListener('iceconnectionstatechange', () => {
         console.log(id, 'iceconnectionstatechange', pc.iceConnectionState);
@@ -411,6 +432,7 @@ async function call(id) {
         type: 'offer',
         sdp: offer.sdp,
         id,
+        metadata: localMetadata, // metadata, full and not incremental.
     }));
     hangupBtn.disabled = false;
     document.getElementById('peerId').innerText = id;
@@ -428,6 +450,7 @@ async function answer(id) {
         type: 'answer',
         sdp: answer.sdp,
         id: id,
+        metadata: localMetadata, // metadata, full and not incremental.
     }));
     hangupBtn.disabled = false;
 }
