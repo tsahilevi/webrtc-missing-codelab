@@ -1,3 +1,6 @@
+# Read-only repository
+The github repository is archived to make it read-only. Please ask questions in the course slack channel.
+
 # WebRTC - the missing codelab
 The WebRTC samples have been a useful place to demonstrate the
 best practices for WebRTC code. However, these samples have been
