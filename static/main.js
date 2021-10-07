@@ -20,7 +20,7 @@ audioBtn.addEventListener('click', () => {
     audioTrack.enabled = !audioTrack.enabled;
 });
 const videoBtn = document.getElementById('videoBtn');
-videoBtn.addEventListener('click', () => {
+videoBtn.addEventListener('click', async () => {
     const videoTrack = localStream.getVideoTracks()[0];
     if (videoTrack.enabled) {
         videoBtn.classList.add('muted');
@@ -28,9 +28,30 @@ videoBtn.addEventListener('click', () => {
         videoBtn.classList.remove('muted');
     }
     videoTrack.enabled = !videoTrack.enabled;
+
     // The advanced version of this stops the track to disable and uses
     // replaceTrack to re-enable. Not necessary in Firefox which turns
     // off the camera light.
+    if (videoTrack.enabled == false) {
+        // Wait five seconds in case the user mutes by accident.
+        setTimeout(async () => {
+            if (videoTrack.enabled === false) {
+                videoTrack.stop();
+            }
+        }, 5000);
+    } else if (videoTrack.readyState === 'ended') {
+        // We need to restart the camera and do replaceTrack.
+        // Note that you should be using the same setting as when
+        // getting the initial track. Either store those or use
+        // track.getSettings() to get them.
+        const stream = await navigator.mediaDevices.getUserMedia({video: true});
+        const newTrack = stream.getTracks()[0];
+        replaceVideoTrack(newTrack);
+        // Pushing the new track before removing the old track avoids stopping the
+        // stream.
+        localStream.addTrack(newTrack);
+        localStream.removeTrack(videoTrack);
+    }
 });
 
 // Relatively self-contained screensharing/replaceTrack example.
