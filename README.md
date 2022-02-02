@@ -53,6 +53,8 @@ coding project, making sure you learn by doing as well.
 * Add statistics to the view
 * Tracking disconnections in the server
 
+See [the web page](https://webrtccourse.com/course/webrtc-codelab/module/exercises/) for a more up-to-date list of exercise.
+
 ## Learn more about the codelab
 
 To learn more about the codelab see https://webrtccourse.com/course/webrtc-codelab
