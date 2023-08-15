@@ -8,6 +8,10 @@ const remoteMetadata = new Map();
 // serialization.
 const localMetadata = {};
 
+// Whether to use trickle-ice which is the default,
+// making call setup faster.
+const useTrickleIce = true;
+
 // Audio and video muting.
 const audioBtn = document.getElementById('audioBtn');
 audioBtn.addEventListener('click', () => {
@@ -243,12 +247,14 @@ function connect() {
                     if (!offerCallback) {
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
-                        ws.send(JSON.stringify({
-                            type: 'answer',
-                            sdp: answer.sdp,
-                            id: data.id,
-                            metadata: localMetadata, // metadata, full and not incremental.
-                        }));
+                        if (useTrickleIce) {
+                            ws.send(JSON.stringify({
+                                type: 'answer',
+                                sdp: answer.sdp,
+                                id: data.id,
+                                metadata: localMetadata, // metadata, full and not incremental.
+                            }));
+                        }
                     } else {
                         offerCallback(data.id);
                     }
@@ -291,6 +297,7 @@ function connect() {
 // event listeners.
 function createPeerConnection(id) {
     const pc = new RTCPeerConnection({iceServers});
+    let signalledCandidates = false;
     pc.addEventListener('icecandidate', (e) => {
         const {candidate} = e;
         /*
@@ -311,11 +318,30 @@ function createPeerConnection(id) {
             return;
         }
         */
-        ws.send(JSON.stringify({
-            type: 'candidate',
-            candidate,
-            id,
-        }));
+        if (useTrickleIce) {
+            ws.send(JSON.stringify({
+                type: 'candidate',
+                candidate,
+                id,
+            }));
+        } else if (!signalledCandidates) {
+            // Signal the full offer/answer including the candidates which
+            // are added automatically on two conditions:
+            // 1. when e.candidate is not set (which is a legacy way of saying
+            //    ICE gathering is done (and icegatheringstate is now complete)
+            // 2. when you see a relay candidate. This avoids a 15s timeout in
+            //    ICE gathering on machines with multiple interfaces where on
+            //    of them is not routable.
+            if (!candidate || candidate.type === 'relay') {
+                signalledCandidates = true;
+                ws.send(JSON.stringify({
+                    type: pc.localDescription.type,
+                    sdp: pc.localDescription.sdp,
+                    id,
+                    metadata: localMetadata, // metadata, full and not incremental.
+                }));
+            }
+        }
     });
     pc.addEventListener('track', (e) => {
         const remoteVideo = document.getElementById('remoteVideo');
@@ -342,6 +368,9 @@ function createPeerConnection(id) {
     });
     pc.addEventListener('signalingstatechange', () => {
         console.log(id, 'signalingstatechange', pc.signalingState);
+    });
+    pc.addEventListener('icegatheringstatechange', () => {
+        console.log(id, 'icegatheringstatechange', pc.iceGatheringState);
     });
 
     let lastResult = null; // the last getStats result.
@@ -449,12 +478,14 @@ async function call(id) {
     }
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    ws.send(JSON.stringify({
-        type: 'offer',
-        sdp: offer.sdp,
-        id,
-        metadata: localMetadata, // metadata, full and not incremental.
-    }));
+    if (useTrickleIce) {
+        ws.send(JSON.stringify({
+            type: 'offer',
+            sdp: offer.sdp,
+            id,
+            metadata: localMetadata, // metadata, full and not incremental.
+        }));
+    }
     hangupBtn.disabled = false;
     document.getElementById('peerId').innerText = id;
 }
@@ -467,12 +498,14 @@ async function answer(id) {
     const pc = peers.get(id);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
-    ws.send(JSON.stringify({
-        type: 'answer',
-        sdp: answer.sdp,
-        id: id,
-        metadata: localMetadata, // metadata, full and not incremental.
-    }));
+    if (useTrickleIce) {
+        ws.send(JSON.stringify({
+            type: 'answer',
+            sdp: answer.sdp,
+            id: id,
+            metadata: localMetadata, // metadata, full and not incremental.
+        }));
+    }
     hangupBtn.disabled = false;
 }
 
