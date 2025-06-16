@@ -93,8 +93,6 @@ Tsahi Levent-Levi is an Independent Analyst and Consultant for WebRTC. Tsahi act
 
 Tsahi Levent-Levi has over 20 years of experience in the telecommunications, VoIP and 3G industry as an engineer, manager, marketer and CTO. Tsahi is an entrepreneur, independent analyst and consultant, assisting companies to form a bridge between technologies and business strategy in the domain of telecommunications.
 
-Tsahi is the author and editor of [BlogGeek.me](https://bloggeek.me), which focuses on the ecosystem and business opportunities around WebRTC. He is also a co-founder of Kranky Geek, a conference for WebRTC for developers, sponsored by industry leaders such as Google, Intel, TokBox, Twilio and IBM.
+Tsahi is the author and editor of [BlogGeek.me](https://bloggeek.me), which focuses on the ecosystem and business opportunities around WebRTC.
 
-Tsahi is also the co-founder and CEO of [testRTC](https://testrtc.com), a company providing self-service testing and monitoring solutions for WebRTC applications.
-
-Tsahi serves as the WebRTC Evangelist at W3C.
+Tsahi was also the co-founder and CEO of [testRTC](https://testrtc.com), a company providing self-service testing and monitoring solutions for WebRTC applications. testRTC was acquired by Cyara.
