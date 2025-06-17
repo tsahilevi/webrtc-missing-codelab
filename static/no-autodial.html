@@ -30,29 +30,48 @@
                     <option value="125">125</option>
                 </select>kbps
             </p>
+            <p>
+                <label>Codec preferences:</label>
+                <select id="codecPreferences" disabled>
+                    <option selected value="">Default</option>
+                </select>
+            </p>
         </div>
         <div class="right">
-            <p>Peer ID: <span id="peerId"></span></p>
+            <p>Peer ID: <input id="peerId" placeholder="whom to call"></input></p>
             <p>
+                <button id="callButton">call</button>
+                <button id="answerButton" disabled>answer</button>
                 <button id="hangupButton" disabled>hangup</button>
             </p>
         </div>
     </div>
     <script src="/main.js"></script>
     <script>
-/* globals getUserMedia, connect, call */
-// Autoconnect when given a peer id, i.e. #someid
-const initialHash = window.location.hash.substr(1);
-
+/* globals getUserMedia, connect, call, answer */
 // Get the camera, then connect to signaling. Makes things simple.
 getUserMedia()
   .then((/*stream*/) => {
     return connect();
-})
-.then(() => {
-    if (initialHash.length) {
-        call(initialHash);
-    }
 });
+
+const callBtn = document.getElementById('callButton');
+callBtn.addEventListener('click', () => {
+    call(document.getElementById('peerId').value);
+    callBtn.disabled = true;
+});
+
+const answerBtn = document.getElementById('answerButton');
+answerBtn.addEventListener('click', () => {
+    answer(document.getElementById('peerId').value);
+    answerBtn.disabled = true;
+});
+
+// eslint-disable-next-line no-global-assign, no-undef
+offerCallback = (id) => { // Setting this disables autoanswer behaviour
+    callBtn.disabled = true;
+    answerBtn.disabled = false;
+    document.getElementById('peerId').value = id;
+};
     </script>
 </body>

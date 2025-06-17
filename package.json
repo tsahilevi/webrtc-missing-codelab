@@ -4,13 +4,16 @@
   "description": "A minimal signaling server for WebRTC",
   "main": "server.js",
   "author": "Philipp Hancke",
-  "contributors": ["Tsahi Levent-Levi"],
+  "contributors": [
+    "Tsahi Levent-Levi"
+  ],
   "scripts": {
     "start": "node server.js",
     "test": "eslint *.js static/*.html"
   },
   "license": "MIT",
   "dependencies": {
+    "twilio": "^3.41.1",
     "uuid": "^3.4.0",
     "ws": "^7.2.1"
   },
